@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Django
+staticfiles/
+media/
+
+# Окружение
+.env
+.venv/
+venv/
+
+# Инструменты
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Почта при файловом backend
+sent_emails/
