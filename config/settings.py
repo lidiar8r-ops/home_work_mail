@@ -45,6 +45,10 @@ INSTALLED_APPS = [
 
 AUTH_USER_MODEL = "users.User"
 
+LOGIN_URL = "users:login"
+LOGIN_REDIRECT_URL = "mailings:home"
+LOGOUT_REDIRECT_URL = "mailings:home"
+
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
@@ -119,14 +123,23 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 
 # Почта. В Django 6.1 используется настройка MAILERS.
-MAILERS = {
-    "default": {
-        "BACKEND": os.getenv(
-            "MAILER_BACKEND",
-            "django.core.mail.backends.console.EmailBackend",
-        ),
-    },
-}
+# По умолчанию письма печатаются в консоль. Для реальной отправки
+# достаточно переключить MAILER_BACKEND и заполнить SMTP-параметры в .env.
+MAILER_BACKEND = os.getenv(
+    "MAILER_BACKEND",
+    "django.core.mail.backends.console.EmailBackend",
+)
+MAILERS = {"default": {"BACKEND": MAILER_BACKEND}}
+
+if "smtp" in MAILER_BACKEND:
+    MAILERS["default"]["OPTIONS"] = {
+        "host": os.getenv("EMAIL_HOST", "smtp.example.com"),
+        "port": int(os.getenv("EMAIL_PORT", "587")),
+        "username": os.getenv("EMAIL_HOST_USER", "mailer@example.com"),
+        "password": os.getenv("EMAIL_HOST_PASSWORD", "change-me"),
+        "use_tls": env_bool("EMAIL_USE_TLS", True),
+    }
+
 DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "noreply@mail-service.local")
 
 # Сколько часов действует ссылка подтверждения email.
