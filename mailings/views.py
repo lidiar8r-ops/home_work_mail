@@ -1,9 +1,10 @@
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models.deletion import ProtectedError
-from django.shortcuts import redirect
+from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse_lazy
 from django.utils import timezone
+from django.views import View
 from django.views.generic import (
     CreateView,
     DeleteView,
@@ -15,7 +16,8 @@ from django.views.generic import (
 
 from .forms import MailingForm, MessageForm, RecipientForm
 from .mixins import OwnerRequiredMixin, VisibleOwnerQuerysetMixin
-from .models import Mailing, Message, Recipient
+from .models import Mailing, MailingAttempt, Message, Recipient
+from .services import MailingError, run_mailing
 
 
 class HomeView(LoginRequiredMixin, TemplateView):
@@ -162,8 +164,17 @@ class MailingDetailView(VisibleOwnerQuerysetMixin, DetailView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         mailing = self.object
+        attempts = mailing.attempts.all()
         context["can_edit"] = mailing.owner_id == self.request.user.id
         context["can_disable"] = self.request.user.is_manager
+        context["attempts"] = attempts[:100]
+        context["attempts_total"] = attempts.count()
+        context["attempts_success"] = attempts.filter(
+            status=MailingAttempt.Status.SUCCESS
+        ).count()
+        context["attempts_failed"] = attempts.filter(
+            status=MailingAttempt.Status.FAILED
+        ).count()
         return context
 
 
@@ -208,3 +219,23 @@ class MailingDeleteView(OwnerRequiredMixin, DeleteView):
     def form_valid(self, form):
         messages.success(self.request, "Рассылка удалена.")
         return super().form_valid(form)
+
+
+class MailingRunView(LoginRequiredMixin, View):
+    def post(self, request, pk):
+        mailing = get_object_or_404(Mailing, pk=pk, owner=request.user)
+        try:
+            attempts = run_mailing(mailing)
+        except MailingError as exc:
+            messages.error(request, str(exc))
+        else:
+            success = sum(
+                attempt.status == MailingAttempt.Status.SUCCESS
+                for attempt in attempts
+            )
+            failed = len(attempts) - success
+            messages.success(
+                request,
+                f"Рассылка выполнена: успешно {success}, ошибок {failed}.",
+            )
+        return redirect("mailings:mailing_detail", pk=pk)

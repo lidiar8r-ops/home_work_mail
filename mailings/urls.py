@@ -28,6 +28,11 @@ urlpatterns = [
         name="mailing_delete",
     ),
     path(
+        "mailings/<int:pk>/run/",
+        views.MailingRunView.as_view(),
+        name="mailing_run",
+    ),
+    path(
         "recipients/",
         views.RecipientListView.as_view(),
         name="recipient_list",
