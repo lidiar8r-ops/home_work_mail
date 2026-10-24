@@ -10,10 +10,17 @@
     Управляйте клиентами, сообщениями и рассылками, запускайте отправку
     и следите за статистикой.
   </p>
+  <div class="hero-actions">
+    <a class="button button-primary" href="{% url 'mailings:recipient_list' %}">Клиенты</a>
+    <a class="button button-secondary" href="{% url 'mailings:message_list' %}">Сообщения</a>
+  </div>
 </section>
 
 <section class="panel">
   <h2>С чего начать</h2>
-  <p>Разделы появятся по мере готовности: клиенты, сообщения, рассылки и статистика.</p>
+  <p>
+    Сначала добавьте получателей и подготовьте сообщение — затем можно
+    будет собрать рассылку и запустить отправку.
+  </p>
 </section>
 {% endblock %}

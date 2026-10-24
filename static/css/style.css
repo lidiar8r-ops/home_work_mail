@@ -177,6 +177,13 @@ p {
   font-size: 1.08rem;
 }
 
+.hero-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 20px;
+}
+
 .panel {
   padding: 24px;
   background: var(--surface);

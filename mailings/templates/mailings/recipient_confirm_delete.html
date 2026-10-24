@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+
+{% block title %}Удалить клиента — Сервис рассылок{% endblock %}
+
+{% block content %}
+<section class="auth-card">
+  <h1>Удалить клиента?</h1>
+  <p>
+    {{ object.full_name }} &lt;{{ object.email }}&gt; будет удалён из списка
+    получателей. Это действие нельзя отменить.
+  </p>
+
+  <form method="post">
+    {% csrf_token %}
+    <div class="actions">
+      <button class="button button-danger" type="submit">Удалить</button>
+      <a class="button button-secondary" href="{% url 'mailings:recipient_list' %}">Отмена</a>
+    </div>
+  </form>
+</section>
+{% endblock %}
