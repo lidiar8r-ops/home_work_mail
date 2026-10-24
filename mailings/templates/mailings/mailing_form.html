@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+
+{% block title %}{% if form.instance.pk %}Изменить рассылку{% else %}Новая рассылка{% endif %} — Сервис рассылок{% endblock %}
+
+{% block content %}
+<section class="panel form-panel">
+  <h1>{% if form.instance.pk %}Изменить рассылку{% else %}Новая рассылка{% endif %}</h1>
+  <p class="muted">
+    Дата начала не может быть в прошлом. Дата окончания должна быть позже
+    даты начала.
+  </p>
+
+  <form method="post" class="form">
+    {% csrf_token %}
+    {% include "mailings/_form_fields.html" %}
+
+    <div class="actions">
+      <button class="button button-primary" type="submit">Сохранить</button>
+      <a class="button button-secondary" href="{% url 'mailings:mailing_list' %}">Отмена</a>
+    </div>
+  </form>
+</section>
+{% endblock %}

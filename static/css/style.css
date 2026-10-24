@@ -192,6 +192,37 @@ p {
   box-shadow: var(--shadow);
 }
 
+.panel + .panel {
+  margin-top: 16px;
+}
+
+.form-panel {
+  max-width: 760px;
+}
+
+.message-body {
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: #faf9f6;
+  white-space: pre-wrap;
+}
+
+.plain-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.plain-list li {
+  padding: 7px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.plain-list li:last-child {
+  border-bottom: 0;
+}
+
 .auth-card {
   max-width: 470px;
   margin: 0 auto;
