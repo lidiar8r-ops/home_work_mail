@@ -32,6 +32,7 @@
 - Python 3.13
 - Django 6.1
 - PostgreSQL 18
+- psycopg2
 - python-dotenv
 
 ## Запуск
@@ -61,6 +62,36 @@ python manage.py runserver
 и завершённая с журналом попыток.
 
 Повторный запуск с `--reset` пересоздаёт рассылки демо-пользователя.
+
+## База данных
+
+Параметры подключения задаются в `.env`:
+
+```env
+DB_NAME=mailing_service
+DB_USER=mailing_user
+DB_PASSWORD=change-me
+DB_HOST=127.0.0.1
+DB_PORT=5432
+```
+
+Роль и базу создай один раз под пользователем `postgres`:
+
+```sql
+CREATE ROLE mailing_user LOGIN PASSWORD 'change-me';
+CREATE DATABASE mailing_service OWNER mailing_user ENCODING 'UTF8' TEMPLATE template0;
+ALTER ROLE mailing_user CREATEDB;
+```
+
+Перенос данных:
+
+```bash
+python manage.py dumpdata users mailings --indent 2 -o dump.json
+python manage.py migrate
+python manage.py loaddata dump.json
+```
+
+`dump.json` содержит данные, его не нужно коммитить.
 
 ## Почта
 
