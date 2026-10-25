@@ -65,7 +65,7 @@ python manage.py runserver
 
 ## База данных
 
-Параметры подключения задаются в `.env`:
+Проект работает с PostgreSQL. Параметры подключения — в `.env`:
 
 ```env
 DB_NAME=mailing_service
@@ -83,15 +83,12 @@ CREATE DATABASE mailing_service OWNER mailing_user ENCODING 'UTF8' TEMPLATE temp
 ALTER ROLE mailing_user CREATEDB;
 ```
 
-Перенос данных:
+После настройки примени схему и загрузи демо-данные:
 
 ```bash
-python manage.py dumpdata users mailings --indent 2 -o dump.json
 python manage.py migrate
-python manage.py loaddata dump.json
+python manage.py seed_demo
 ```
-
-`dump.json` содержит данные, его не нужно коммитить.
 
 ## Почта
 
