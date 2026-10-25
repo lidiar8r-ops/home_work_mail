@@ -1,11 +1,14 @@
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.core.cache import cache
 from django.db.models import Count, Q
 from django.db.models.deletion import ProtectedError
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse_lazy
 from django.utils import timezone
+from django.utils.decorators import method_decorator
 from django.views import View
+from django.views.decorators.cache import cache_control, never_cache
 from django.views.generic import (
     CreateView,
     DeleteView,
@@ -16,6 +19,11 @@ from django.views.generic import (
 )
 from users.models import User
 
+from .cache import (
+    STATS_CACHE_TIMEOUT,
+    statistics_totals_key,
+    stats_cache_key,
+)
 from .forms import MailingForm, MessageForm, RecipientForm
 from .mixins import (
     ManagerRequiredMixin,
@@ -26,6 +34,7 @@ from .models import Mailing, MailingAttempt, Message, Recipient
 from .services import MailingError, run_mailing
 
 
+@method_decorator(cache_control(private=True, max_age=60), name="dispatch")
 class HomeView(LoginRequiredMixin, TemplateView):
     template_name = "home.html"
 
@@ -43,18 +52,24 @@ class HomeView(LoginRequiredMixin, TemplateView):
 
         attempts = MailingAttempt.objects.filter(mailing__in=mailings)
 
-        context["stats"] = {
-            "total_mailings": mailings.count(),
-            "active_mailings": mailings.filter(
-                is_disabled=False,
-                start_time__lte=now,
-                end_time__gte=now,
-            ).count(),
-            "total_recipients": recipients.count(),
-            "success_attempts": attempts.filter(
-                status=MailingAttempt.Status.SUCCESS
-            ).count(),
-        }
+        cache_key = stats_cache_key(user)
+        stats = cache.get(cache_key)
+        if stats is None:
+            stats = {
+                "total_mailings": mailings.count(),
+                "active_mailings": mailings.filter(
+                    is_disabled=False,
+                    start_time__lte=now,
+                    end_time__gte=now,
+                ).count(),
+                "total_recipients": recipients.count(),
+                "success_attempts": attempts.filter(
+                    status=MailingAttempt.Status.SUCCESS
+                ).count(),
+            }
+            cache.set(cache_key, stats, STATS_CACHE_TIMEOUT)
+
+        context["stats"] = stats
         context["recent_mailings"] = mailings.select_related(
             "message", "owner"
         ).order_by("-created_at")[:5]
@@ -64,6 +79,7 @@ class HomeView(LoginRequiredMixin, TemplateView):
         return context
 
 
+@method_decorator(cache_control(private=True, max_age=60), name="dispatch")
 class StatisticsView(LoginRequiredMixin, TemplateView):
     template_name = "mailings/statistics.html"
 
@@ -94,19 +110,26 @@ class StatisticsView(LoginRequiredMixin, TemplateView):
             .order_by("-start_time")
         )
 
+        totals_key = statistics_totals_key(user)
+        totals = cache.get(totals_key)
+        if totals is None:
+            totals = attempts.aggregate(
+                total=Count("id"),
+                success=Count(
+                    "id", filter=Q(status=MailingAttempt.Status.SUCCESS)
+                ),
+                failed=Count(
+                    "id", filter=Q(status=MailingAttempt.Status.FAILED)
+                ),
+            )
+            cache.set(totals_key, totals, STATS_CACHE_TIMEOUT)
+
         context["mailings"] = mailings
-        context["totals"] = attempts.aggregate(
-            total=Count("id"),
-            success=Count(
-                "id", filter=Q(status=MailingAttempt.Status.SUCCESS)
-            ),
-            failed=Count(
-                "id", filter=Q(status=MailingAttempt.Status.FAILED)
-            ),
-        )
+        context["totals"] = totals
         return context
 
 
+@method_decorator(cache_control(private=True, max_age=0, must_revalidate=True), name="dispatch")
 class RecipientListView(VisibleOwnerQuerysetMixin, ListView):
     model = Recipient
     paginate_by = 15
@@ -114,6 +137,7 @@ class RecipientListView(VisibleOwnerQuerysetMixin, ListView):
     template_name = "mailings/recipient_list.html"
 
 
+@method_decorator(never_cache, name="dispatch")
 class RecipientCreateView(LoginRequiredMixin, CreateView):
     model = Recipient
     form_class = RecipientForm
@@ -126,6 +150,7 @@ class RecipientCreateView(LoginRequiredMixin, CreateView):
         return super().form_valid(form)
 
 
+@method_decorator(never_cache, name="dispatch")
 class RecipientUpdateView(OwnerRequiredMixin, UpdateView):
     model = Recipient
     form_class = RecipientForm
@@ -137,6 +162,7 @@ class RecipientUpdateView(OwnerRequiredMixin, UpdateView):
         return super().form_valid(form)
 
 
+@method_decorator(never_cache, name="dispatch")
 class RecipientDeleteView(OwnerRequiredMixin, DeleteView):
     model = Recipient
     template_name = "mailings/recipient_confirm_delete.html"
@@ -147,6 +173,7 @@ class RecipientDeleteView(OwnerRequiredMixin, DeleteView):
         return super().form_valid(form)
 
 
+@method_decorator(cache_control(private=True, max_age=0, must_revalidate=True), name="dispatch")
 class MessageListView(VisibleOwnerQuerysetMixin, ListView):
     model = Message
     paginate_by = 15
@@ -154,6 +181,7 @@ class MessageListView(VisibleOwnerQuerysetMixin, ListView):
     template_name = "mailings/message_list.html"
 
 
+@method_decorator(never_cache, name="dispatch")
 class MessageCreateView(LoginRequiredMixin, CreateView):
     model = Message
     form_class = MessageForm
@@ -166,6 +194,7 @@ class MessageCreateView(LoginRequiredMixin, CreateView):
         return super().form_valid(form)
 
 
+@method_decorator(never_cache, name="dispatch")
 class MessageUpdateView(OwnerRequiredMixin, UpdateView):
     model = Message
     form_class = MessageForm
@@ -177,6 +206,7 @@ class MessageUpdateView(OwnerRequiredMixin, UpdateView):
         return super().form_valid(form)
 
 
+@method_decorator(never_cache, name="dispatch")
 class MessageDeleteView(OwnerRequiredMixin, DeleteView):
     model = Message
     template_name = "mailings/message_confirm_delete.html"
@@ -195,6 +225,7 @@ class MessageDeleteView(OwnerRequiredMixin, DeleteView):
         return response
 
 
+@method_decorator(cache_control(private=True, max_age=0, must_revalidate=True), name="dispatch")
 class MailingListView(VisibleOwnerQuerysetMixin, ListView):
     model = Mailing
     paginate_by = 10
@@ -231,6 +262,7 @@ class MailingListView(VisibleOwnerQuerysetMixin, ListView):
         return context
 
 
+@method_decorator(cache_control(private=True, max_age=0, must_revalidate=True), name="dispatch")
 class MailingDetailView(VisibleOwnerQuerysetMixin, DetailView):
     model = Mailing
     context_object_name = "mailing"
@@ -261,6 +293,7 @@ class MailingDetailView(VisibleOwnerQuerysetMixin, DetailView):
         return context
 
 
+@method_decorator(never_cache, name="dispatch")
 class MailingCreateView(LoginRequiredMixin, CreateView):
     model = Mailing
     form_class = MailingForm
@@ -278,6 +311,7 @@ class MailingCreateView(LoginRequiredMixin, CreateView):
         return super().form_valid(form)
 
 
+@method_decorator(never_cache, name="dispatch")
 class MailingUpdateView(OwnerRequiredMixin, UpdateView):
     model = Mailing
     form_class = MailingForm
@@ -294,6 +328,7 @@ class MailingUpdateView(OwnerRequiredMixin, UpdateView):
         return super().form_valid(form)
 
 
+@method_decorator(never_cache, name="dispatch")
 class MailingDeleteView(OwnerRequiredMixin, DeleteView):
     model = Mailing
     template_name = "mailings/mailing_confirm_delete.html"
@@ -334,6 +369,7 @@ class MailingDisableView(ManagerRequiredMixin, View):
         return redirect("mailings:mailing_detail", pk=mailing.pk)
 
 
+@method_decorator(cache_control(private=True, max_age=0, must_revalidate=True), name="dispatch")
 class ManagerUserListView(ManagerRequiredMixin, ListView):
     model = User
     template_name = "mailings/manager_user_list.html"

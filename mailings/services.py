@@ -4,6 +4,7 @@ from django.conf import settings
 from django.core.mail import send_mail
 from django.utils import timezone
 
+from .cache import bump_stats_cache
 from .models import Mailing, MailingAttempt
 
 logger = logging.getLogger(__name__)
@@ -92,6 +93,9 @@ def run_mailing(mailing: Mailing) -> list[MailingAttempt]:
 
     # Попытки сохраняются пакетом, а не по одной.
     MailingAttempt.objects.bulk_create(attempts, batch_size=100)
+
+    # bulk_create не отправляет сигналы, поэтому кеш статистики сбрасываем явно.
+    bump_stats_cache()
 
     logger.info(
         "Рассылка #%s выполнена: писем %s, получателей %s",
