@@ -7,21 +7,97 @@
   <p class="eyebrow">Сервис управления рассылками</p>
   <h1>Здравствуйте{% if user.full_name %}, {{ user.full_name }}{% endif %}!</h1>
   <p class="lead">
-    Управляйте клиентами, сообщениями и рассылками, запускайте отправку
-    и следите за статистикой.
+    {% if user.is_manager %}
+      Показатели по всем пользователям сервиса.
+    {% else %}
+      Показатели по вашим рассылкам и получателям.
+    {% endif %}
   </p>
   <div class="hero-actions">
     <a class="button button-primary" href="{% url 'mailings:mailing_list' %}">Рассылки</a>
     <a class="button button-secondary" href="{% url 'mailings:recipient_list' %}">Клиенты</a>
     <a class="button button-secondary" href="{% url 'mailings:message_list' %}">Сообщения</a>
+    <a class="button button-secondary" href="{% url 'mailings:statistics' %}">Статистика</a>
   </div>
 </section>
 
+<div class="stats-grid">
+  <div class="stat-card">
+    <span class="stat-value">{{ stats.total_mailings }}</span>
+    <span class="stat-label">Всего рассылок</span>
+  </div>
+  <div class="stat-card">
+    <span class="stat-value">{{ stats.active_mailings }}</span>
+    <span class="stat-label">Активных рассылок</span>
+  </div>
+  <div class="stat-card">
+    <span class="stat-value">{{ stats.total_recipients }}</span>
+    <span class="stat-label">Уникальных получателей</span>
+  </div>
+  <div class="stat-card">
+    <span class="stat-value">{{ stats.success_attempts }}</span>
+    <span class="stat-label">Успешных отправок</span>
+  </div>
+</div>
+
 <section class="panel">
-  <h2>С чего начать</h2>
-  <p>
-    Сначала добавьте получателей и подготовьте сообщение — затем можно
-    будет собрать рассылку и запустить отправку.
-  </p>
+  <h2>Последние рассылки</h2>
+  {% if recent_mailings %}
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Тема</th>
+            <th>Период</th>
+            <th>Статус</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for mailing in recent_mailings %}
+            <tr>
+              <td>
+                <a href="{% url 'mailings:mailing_detail' mailing.pk %}">
+                  {{ mailing.message.subject }}
+                </a>
+              </td>
+              <td>
+                {{ mailing.start_time|date:"d.m.Y H:i" }} —
+                {{ mailing.end_time|date:"d.m.Y H:i" }}
+              </td>
+              <td>
+                <span class="badge badge-{{ mailing.status }}">{{ mailing.status_label }}</span>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <p class="muted">
+      Рассылок пока нет.
+      <a href="{% url 'mailings:mailing_create' %}">Создать первую</a>.
+    </p>
+  {% endif %}
+</section>
+
+<section class="panel">
+  <h2>Последние попытки</h2>
+  {% if recent_attempts %}
+    <ul class="plain-list">
+      {% for attempt in recent_attempts %}
+        <li>
+          <span class="badge badge-{{ attempt.status }}">
+            {{ attempt.get_status_display }}
+          </span>
+          <a href="{% url 'mailings:mailing_detail' attempt.mailing.pk %}">
+            {{ attempt.mailing.message.subject }}
+          </a>
+          <span class="muted">· {{ attempt.attempt_time|date:"d.m.Y H:i" }}</span>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p class="muted">Попыток отправки пока не было.</p>
+  {% endif %}
 </section>
 {% endblock %}

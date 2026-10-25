@@ -21,6 +21,10 @@
           <a href="{% url 'mailings:mailing_list' %}">Рассылки</a>
           <a href="{% url 'mailings:recipient_list' %}">Клиенты</a>
           <a href="{% url 'mailings:message_list' %}">Сообщения</a>
+          <a href="{% url 'mailings:statistics' %}">Статистика</a>
+          {% if user.is_manager %}
+            <a href="{% url 'mailings:manager_users' %}">Пользователи</a>
+          {% endif %}
           <a href="{% url 'users:profile' %}">Профиль</a>
         {% else %}
           <a href="{% url 'users:login' %}">Вход</a>

@@ -20,6 +20,16 @@
         {% csrf_token %}
         <button class="button button-primary" type="submit">Запустить рассылку</button>
       </form>
+    {% endif %}
+    {% if can_disable %}
+      <form method="post" action="{% url 'mailings:mailing_disable' mailing.pk %}" class="inline-form">
+        {% csrf_token %}
+        <button class="button button-secondary" type="submit">
+          {% if mailing.is_disabled %}Включить{% else %}Отключить{% endif %}
+        </button>
+      </form>
+    {% endif %}
+    {% if can_edit %}
       <a class="button button-secondary"
          href="{% url 'mailings:mailing_update' mailing.pk %}">Изменить</a>
       <a class="button button-danger"

@@ -64,6 +64,16 @@
                 <a class="button button-small button-danger"
                    href="{% url 'mailings:mailing_delete' mailing.pk %}">Удалить</a>
               {% endif %}
+              {% if user.is_manager %}
+                <form method="post"
+                      action="{% url 'mailings:mailing_disable' mailing.pk %}"
+                      class="inline-form">
+                  {% csrf_token %}
+                  <button class="button button-small button-secondary" type="submit">
+                    {% if mailing.is_disabled %}Включить{% else %}Отключить{% endif %}
+                  </button>
+                </form>
+              {% endif %}
             </td>
           </tr>
         {% endfor %}

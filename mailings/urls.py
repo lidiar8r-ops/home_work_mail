@@ -33,6 +33,22 @@ urlpatterns = [
         name="mailing_run",
     ),
     path(
+        "mailings/<int:pk>/toggle/",
+        views.MailingDisableView.as_view(),
+        name="mailing_disable",
+    ),
+    path("statistics/", views.StatisticsView.as_view(), name="statistics"),
+    path(
+        "manager/users/",
+        views.ManagerUserListView.as_view(),
+        name="manager_users",
+    ),
+    path(
+        "manager/users/<int:pk>/toggle-block/",
+        views.UserBlockView.as_view(),
+        name="user_toggle_block",
+    ),
+    path(
         "recipients/",
         views.RecipientListView.as_view(),
         name="recipient_list",

@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+
+{% block title %}Статистика — Сервис рассылок{% endblock %}
+
+{% block content %}
+<h1>Статистика</h1>
+<p class="muted">
+  {% if user.is_manager %}
+    По всем рассылкам сервиса.
+  {% else %}
+    По вашим рассылкам.
+  {% endif %}
+</p>
+
+<div class="stats-grid">
+  <div class="stat-card">
+    <span class="stat-value">{{ totals.total|default:0 }}</span>
+    <span class="stat-label">Всего попыток</span>
+  </div>
+  <div class="stat-card">
+    <span class="stat-value">{{ totals.success|default:0 }}</span>
+    <span class="stat-label">Успешных отправок</span>
+  </div>
+  <div class="stat-card">
+    <span class="stat-value">{{ totals.failed|default:0 }}</span>
+    <span class="stat-label">Неуспешных попыток</span>
+  </div>
+</div>
+
+{% if mailings %}
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Рассылка</th>
+          {% if user.is_manager %}<th>Владелец</th>{% endif %}
+          <th>Период</th>
+          <th>Попыток</th>
+          <th>Успешно</th>
+          <th>Ошибок</th>
+          <th>Статус</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for mailing in mailings %}
+          <tr>
+            <td>
+              <a href="{% url 'mailings:mailing_detail' mailing.pk %}">
+                {{ mailing.message.subject }}
+              </a>
+            </td>
+            {% if user.is_manager %}<td>{{ mailing.owner.email }}</td>{% endif %}
+            <td>
+              {{ mailing.start_time|date:"d.m.Y H:i" }}<br>
+              <span class="muted">до {{ mailing.end_time|date:"d.m.Y H:i" }}</span>
+            </td>
+            <td>{{ mailing.attempt_count }}</td>
+            <td>{{ mailing.success_count }}</td>
+            <td>{{ mailing.failed_count }}</td>
+            <td>
+              <span class="badge badge-{{ mailing.status }}">{{ mailing.status_label }}</span>
+              {% if mailing.is_disabled %}
+                <span class="badge badge-disabled">Отключена</span>
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% else %}
+  <div class="panel empty-state">
+    Рассылок пока нет — статистика появится после первой отправки.
+  </div>
+{% endif %}
+{% endblock %}

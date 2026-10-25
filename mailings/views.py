@@ -1,5 +1,6 @@
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.db.models import Count, Q
 from django.db.models.deletion import ProtectedError
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse_lazy
@@ -13,15 +14,97 @@ from django.views.generic import (
     TemplateView,
     UpdateView,
 )
+from users.models import User
 
 from .forms import MailingForm, MessageForm, RecipientForm
-from .mixins import OwnerRequiredMixin, VisibleOwnerQuerysetMixin
+from .mixins import (
+    ManagerRequiredMixin,
+    OwnerRequiredMixin,
+    VisibleOwnerQuerysetMixin,
+)
 from .models import Mailing, MailingAttempt, Message, Recipient
 from .services import MailingError, run_mailing
 
 
 class HomeView(LoginRequiredMixin, TemplateView):
     template_name = "home.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        user = self.request.user
+        now = timezone.now()
+
+        if user.is_manager:
+            mailings = Mailing.objects.all()
+            recipients = Recipient.objects.all()
+        else:
+            mailings = Mailing.objects.filter(owner=user)
+            recipients = Recipient.objects.filter(owner=user)
+
+        attempts = MailingAttempt.objects.filter(mailing__in=mailings)
+
+        context["stats"] = {
+            "total_mailings": mailings.count(),
+            "active_mailings": mailings.filter(
+                is_disabled=False,
+                start_time__lte=now,
+                end_time__gte=now,
+            ).count(),
+            "total_recipients": recipients.count(),
+            "success_attempts": attempts.filter(
+                status=MailingAttempt.Status.SUCCESS
+            ).count(),
+        }
+        context["recent_mailings"] = mailings.select_related(
+            "message", "owner"
+        ).order_by("-created_at")[:5]
+        context["recent_attempts"] = attempts.select_related(
+            "mailing__message"
+        ).order_by("-attempt_time")[:5]
+        return context
+
+
+class StatisticsView(LoginRequiredMixin, TemplateView):
+    template_name = "mailings/statistics.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        user = self.request.user
+
+        if user.is_manager:
+            mailings = Mailing.objects.all()
+            attempts = MailingAttempt.objects.all()
+        else:
+            mailings = Mailing.objects.filter(owner=user)
+            attempts = MailingAttempt.objects.filter(mailing__owner=user)
+
+        mailings = (
+            mailings.select_related("message", "owner")
+            .annotate(
+                attempt_count=Count("attempts"),
+                success_count=Count(
+                    "attempts",
+                    filter=Q(attempts__status=MailingAttempt.Status.SUCCESS),
+                ),
+                failed_count=Count(
+                    "attempts",
+                    filter=Q(attempts__status=MailingAttempt.Status.FAILED),
+                ),
+            )
+            .order_by("-start_time")
+        )
+
+        context["mailings"] = mailings
+        context["totals"] = attempts.aggregate(
+            total=Count("id"),
+            success=Count(
+                "id", filter=Q(status=MailingAttempt.Status.SUCCESS)
+            ),
+            failed=Count(
+                "id", filter=Q(status=MailingAttempt.Status.FAILED)
+            ),
+        )
+        return context
 
 
 class RecipientListView(VisibleOwnerQuerysetMixin, ListView):
@@ -239,3 +322,42 @@ class MailingRunView(LoginRequiredMixin, View):
                 f"Рассылка выполнена: успешно {success}, ошибок {failed}.",
             )
         return redirect("mailings:mailing_detail", pk=pk)
+
+
+class MailingDisableView(ManagerRequiredMixin, View):
+    def post(self, request, pk):
+        mailing = get_object_or_404(Mailing, pk=pk)
+        mailing.is_disabled = not mailing.is_disabled
+        mailing.save(update_fields=["is_disabled"])
+        state = "отключена" if mailing.is_disabled else "включена"
+        messages.success(request, f"Рассылка #{mailing.pk} {state}.")
+        return redirect("mailings:mailing_detail", pk=mailing.pk)
+
+
+class ManagerUserListView(ManagerRequiredMixin, ListView):
+    model = User
+    template_name = "mailings/manager_user_list.html"
+    context_object_name = "accounts"
+    paginate_by = 20
+
+    def get_queryset(self):
+        return User.objects.annotate(
+            mailing_count=Count("mailings")
+        ).order_by("email")
+
+
+class UserBlockView(ManagerRequiredMixin, View):
+    def post(self, request, pk):
+        account = get_object_or_404(User, pk=pk)
+
+        if account == request.user:
+            messages.error(request, "Нельзя заблокировать самого себя.")
+        elif account.is_superuser:
+            messages.error(request, "Нельзя заблокировать суперпользователя.")
+        else:
+            account.is_active = not account.is_active
+            account.save(update_fields=["is_active"])
+            state = "заблокирован" if not account.is_active else "разблокирован"
+            messages.success(request, f"Пользователь {account.email} {state}.")
+
+        return redirect("mailings:manager_users")
