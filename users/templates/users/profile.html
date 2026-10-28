@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block title %}Профиль — Сервис рассылок{% endblock %}
+
+{% block content %}
+<section class="panel">
+  <h1>Профиль</h1>
+
+  <dl class="details">
+    <div>
+      <dt>Email</dt>
+      <dd>{{ user.email }}</dd>
+    </div>
+    <div>
+      <dt>Ф. И. О.</dt>
+      <dd>{{ user.full_name|default:"—" }}</dd>
+    </div>
+    <div>
+      <dt>Роль</dt>
+      <dd>{{ user.get_role_display }}</dd>
+    </div>
+    <div>
+      <dt>Email подтверждён</dt>
+      <dd>{% if user.is_email_confirmed %}Да{% else %}Нет{% endif %}</dd>
+    </div>
+    <div>
+      <dt>Дата регистрации</dt>
+      <dd>{{ user.date_joined|date:"d.m.Y H:i" }}</dd>
+    </div>
+  </dl>
+</section>
+{% endblock %}

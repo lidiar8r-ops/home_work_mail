@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+
+{% block title %}Рассылки — Сервис рассылок{% endblock %}
+
+{% block content %}
+<div class="toolbar">
+  <div>
+    <h1>Рассылки</h1>
+    <p class="muted">Период, сообщение и получатели.</p>
+  </div>
+  <a class="button button-primary" href="{% url 'mailings:mailing_create' %}">
+    Создать рассылку
+  </a>
+</div>
+
+<div class="filters">
+  <a href="{% url 'mailings:mailing_list' %}"
+     class="{% if not current_status %}active{% endif %}">Все</a>
+  {% for value, label in statuses %}
+    <a href="?status={{ value }}"
+       class="{% if current_status == value %}active{% endif %}">{{ label }}</a>
+  {% endfor %}
+</div>
+
+{% if mailings %}
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Сообщение</th>
+          <th>Период</th>
+          <th>Получатели</th>
+          <th>Статус</th>
+          {% if user.is_manager %}<th>Владелец</th>{% endif %}
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for mailing in mailings %}
+          <tr>
+            <td>
+              <a href="{% url 'mailings:mailing_detail' mailing.pk %}">
+                {{ mailing.message.subject }}
+              </a>
+            </td>
+            <td>
+              {{ mailing.start_time|date:"d.m.Y H:i" }}<br>
+              <span class="muted">до {{ mailing.end_time|date:"d.m.Y H:i" }}</span>
+            </td>
+            <td>{{ mailing.recipients.all|length }}</td>
+            <td>
+              <span class="badge badge-{{ mailing.status }}">{{ mailing.status_label }}</span>
+              {% if mailing.is_disabled %}
+                <span class="badge badge-disabled">Отключена</span>
+              {% endif %}
+            </td>
+            {% if user.is_manager %}<td>{{ mailing.owner.email }}</td>{% endif %}
+            <td class="actions">
+              <a class="button button-small button-secondary"
+                 href="{% url 'mailings:mailing_detail' mailing.pk %}">Открыть</a>
+              {% if mailing.owner_id == user.id %}
+                <a class="button button-small button-secondary"
+                   href="{% url 'mailings:mailing_update' mailing.pk %}">Изменить</a>
+                <a class="button button-small button-danger"
+                   href="{% url 'mailings:mailing_delete' mailing.pk %}">Удалить</a>
+              {% endif %}
+              {% if user.is_manager %}
+                <form method="post"
+                      action="{% url 'mailings:mailing_disable' mailing.pk %}"
+                      class="inline-form">
+                  {% csrf_token %}
+                  <button class="button button-small button-secondary" type="submit">
+                    {% if mailing.is_disabled %}Включить{% else %}Отключить{% endif %}
+                  </button>
+                </form>
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% include "mailings/_pagination.html" with query_status=current_status %}
+{% else %}
+  <div class="panel empty-state">
+    Рассылок пока нет.
+    <a href="{% url 'mailings:mailing_create' %}">Создайте первую</a>.
+  </div>
+{% endif %}
+{% endblock %}

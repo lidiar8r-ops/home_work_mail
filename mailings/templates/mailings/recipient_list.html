@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block title %}Клиенты — Сервис рассылок{% endblock %}
+
+{% block content %}
+<div class="toolbar">
+  <div>
+    <h1>Клиенты</h1>
+    <p class="muted">Получатели рассылок.</p>
+  </div>
+  <a class="button button-primary" href="{% url 'mailings:recipient_create' %}">
+    Добавить клиента
+  </a>
+</div>
+
+{% if recipients %}
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Ф. И. О.</th>
+          <th>Email</th>
+          <th>Комментарий</th>
+          {% if user.is_manager %}<th>Владелец</th>{% endif %}
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for recipient in recipients %}
+          <tr>
+            <td>{{ recipient.full_name }}</td>
+            <td>{{ recipient.email }}</td>
+            <td>{{ recipient.comment|default:"—"|truncatechars:80 }}</td>
+            {% if user.is_manager %}<td>{{ recipient.owner.email }}</td>{% endif %}
+            <td class="actions">
+              {% if recipient.owner_id == user.id %}
+                <a class="button button-small button-secondary"
+                   href="{% url 'mailings:recipient_update' recipient.pk %}">Изменить</a>
+                <a class="button button-small button-danger"
+                   href="{% url 'mailings:recipient_delete' recipient.pk %}">Удалить</a>
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% include "mailings/_pagination.html" %}
+{% else %}
+  <div class="panel empty-state">
+    Клиентов пока нет.
+    <a href="{% url 'mailings:recipient_create' %}">Добавьте первого</a>.
+  </div>
+{% endif %}
+{% endblock %}

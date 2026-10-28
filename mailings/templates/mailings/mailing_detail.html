@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+
+{% block title %}Рассылка #{{ mailing.pk }} — Сервис рассылок{% endblock %}
+
+{% block content %}
+<div class="toolbar">
+  <div>
+    <p class="eyebrow">Рассылка #{{ mailing.pk }}</p>
+    <h1>{{ mailing.message.subject }}</h1>
+    <p>
+      <span class="badge badge-{{ mailing.status }}">{{ mailing.status_label }}</span>
+      {% if mailing.is_disabled %}
+        <span class="badge badge-disabled">Отключена</span>
+      {% endif %}
+    </p>
+  </div>
+  <div class="actions">
+    {% if can_edit %}
+      <form method="post" action="{% url 'mailings:mailing_run' mailing.pk %}" class="inline-form">
+        {% csrf_token %}
+        <button class="button button-primary" type="submit">Запустить рассылку</button>
+      </form>
+    {% endif %}
+    {% if can_disable %}
+      <form method="post" action="{% url 'mailings:mailing_disable' mailing.pk %}" class="inline-form">
+        {% csrf_token %}
+        <button class="button button-secondary" type="submit">
+          {% if mailing.is_disabled %}Включить{% else %}Отключить{% endif %}
+        </button>
+      </form>
+    {% endif %}
+    {% if can_edit %}
+      <a class="button button-secondary"
+         href="{% url 'mailings:mailing_update' mailing.pk %}">Изменить</a>
+      <a class="button button-danger"
+         href="{% url 'mailings:mailing_delete' mailing.pk %}">Удалить</a>
+    {% endif %}
+    <a class="button button-secondary" href="{% url 'mailings:mailing_list' %}">К списку</a>
+  </div>
+</div>
+
+<section class="panel">
+  <h2>Параметры</h2>
+  <dl class="details">
+    <div>
+      <dt>Начало</dt>
+      <dd>{{ mailing.start_time|date:"d.m.Y H:i" }}</dd>
+    </div>
+    <div>
+      <dt>Окончание</dt>
+      <dd>{{ mailing.end_time|date:"d.m.Y H:i" }}</dd>
+    </div>
+    <div>
+      <dt>Владелец</dt>
+      <dd>{{ mailing.owner.email }}</dd>
+    </div>
+    <div>
+      <dt>Получателей</dt>
+      <dd>{{ mailing.recipients.all|length }}</dd>
+    </div>
+  </dl>
+</section>
+
+<section class="panel">
+  <h2>Сообщение</h2>
+  <p class="muted">Тема: {{ mailing.message.subject }}</p>
+  <div class="message-body">{{ mailing.message.body }}</div>
+</section>
+
+<section class="panel">
+  <h2>Получатели</h2>
+  <ul class="plain-list">
+    {% for recipient in mailing.recipients.all %}
+      <li>{{ recipient.full_name }} &lt;{{ recipient.email }}&gt;</li>
+    {% empty %}
+      <li class="muted">Получатели не выбраны.</li>
+    {% endfor %}
+  </ul>
+</section>
+
+<section class="panel">
+  <h2>Журнал попыток</h2>
+  <p class="muted">
+    Всего: {{ attempts_total }} · успешно: {{ attempts_success }} ·
+    ошибок: {{ attempts_failed }}
+  </p>
+
+  {% if attempts %}
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Время</th>
+            <th>Статус</th>
+            <th>Ответ сервера</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for attempt in attempts %}
+            <tr>
+              <td>{{ attempt.attempt_time|date:"d.m.Y H:i:s" }}</td>
+              <td>
+                <span class="badge badge-{{ attempt.status }}">
+                  {{ attempt.get_status_display }}
+                </span>
+              </td>
+              <td>{{ attempt.server_response|default:"—" }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <p class="muted">Попыток ещё не было.</p>
+  {% endif %}
+</section>
+{% endblock %}

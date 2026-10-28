@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block title %}Сообщения — Сервис рассылок{% endblock %}
+
+{% block content %}
+<div class="toolbar">
+  <div>
+    <h1>Сообщения</h1>
+    <p class="muted">Шаблоны писем для рассылок.</p>
+  </div>
+  <a class="button button-primary" href="{% url 'mailings:message_create' %}">
+    Создать сообщение
+  </a>
+</div>
+
+{% if messages_list %}
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Тема</th>
+          <th>Текст</th>
+          <th>Создано</th>
+          {% if user.is_manager %}<th>Владелец</th>{% endif %}
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for message in messages_list %}
+          <tr>
+            <td>{{ message.subject }}</td>
+            <td>{{ message.body|truncatechars:90 }}</td>
+            <td>{{ message.created_at|date:"d.m.Y H:i" }}</td>
+            {% if user.is_manager %}<td>{{ message.owner.email }}</td>{% endif %}
+            <td class="actions">
+              {% if message.owner_id == user.id %}
+                <a class="button button-small button-secondary"
+                   href="{% url 'mailings:message_update' message.pk %}">Изменить</a>
+                <a class="button button-small button-danger"
+                   href="{% url 'mailings:message_delete' message.pk %}">Удалить</a>
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% include "mailings/_pagination.html" %}
+{% else %}
+  <div class="panel empty-state">
+    Сообщений пока нет.
+    <a href="{% url 'mailings:message_create' %}">Создайте первое</a>.
+  </div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+
+{% block title %}Удалить рассылку — Сервис рассылок{% endblock %}
+
+{% block content %}
+<section class="auth-card">
+  <h1>Удалить рассылку?</h1>
+  <p>
+    Рассылка #{{ object.pk }} «{{ object.message.subject }}» и её журнал
+    попыток будут удалены. Это действие нельзя отменить.
+  </p>
+
+  <form method="post">
+    {% csrf_token %}
+    <div class="actions">
+      <button class="button button-danger" type="submit">Удалить</button>
+      <a class="button button-secondary" href="{% url 'mailings:mailing_list' %}">Отмена</a>
+    </div>
+  </form>
+</section>
+{% endblock %}
